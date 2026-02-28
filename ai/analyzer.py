@@ -68,7 +68,7 @@ def generate_daily_insight(context: str, flags: list[Flag]) -> str:
         f"{context}{flag_text}"
     )
 
-    content = _generate(GEMINI_SUMMARY_MODEL, system, prompt, max_tokens=250)
+    content = _generate(GEMINI_SUMMARY_MODEL, system, prompt, max_tokens=1024)
     _save_insight("daily", content)
     logger.info("Daily insight generated")
     return content.strip()
