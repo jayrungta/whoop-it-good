@@ -29,8 +29,8 @@ EVENING_JOURNAL_HOUR = int(os.getenv("EVENING_JOURNAL_HOUR", "21"))
 TIMEZONE = os.getenv("TIMEZONE", "America/New_York")
 
 # Gemini models
-GEMINI_ANALYSIS_MODEL = "gemini-2.0-flash"    # Q&A + weekly reports
-GEMINI_SUMMARY_MODEL = "gemini-2.0-flash"     # morning summaries + flag alerts
+GEMINI_ANALYSIS_MODEL = "gemini-3-flash-preview"    # Q&A + weekly reports
+GEMINI_SUMMARY_MODEL = "gemini-3-flash-preview"     # morning summaries + flag alerts
 
 # Flag thresholds
 HRV_DROP_THRESHOLD_PCT = 0.15
