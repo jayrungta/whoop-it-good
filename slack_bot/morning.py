@@ -110,6 +110,7 @@ def build_morning_message(target_date: date | None = None) -> str:
 
     hrv = rec.get("hrv")
     if hrv:
+        hrv = round(hrv, 1)
         if hrv_baseline:
             delta_pct = round((hrv - hrv_baseline) / hrv_baseline * 100, 1)
             direction = "↑" if delta_pct >= 0 else "↓"
@@ -119,11 +120,16 @@ def build_morning_message(target_date: date | None = None) -> str:
 
     rhr = rec.get("rhr")
     if rhr:
-        rhr_delta = f"  ({'+' if rhr >= (rhr_baseline or rhr) else ''}{rhr - rhr_baseline:.0f} vs baseline)" if rhr_baseline else ""
+        rhr_delta = f"  ({'+' if rhr >= (rhr_baseline or rhr) else ''}{round(rhr - rhr_baseline)} vs baseline)" if rhr_baseline else ""
         lines.append(f"RHR: {rhr}bpm{rhr_delta}")
 
-    if rec.get("spo2"):
-        lines.append(f"SpO2: {rec['spo2']}%  |  Skin temp: {rec.get('skin_temp')}°C")
+    spo2 = rec.get("spo2")
+    skin_temp = rec.get("skin_temp")
+    if spo2:
+        parts = [f"SpO2: {round(spo2, 1)}%"]
+        if skin_temp:
+            parts.append(f"Skin temp: {round(skin_temp, 1)}°C")
+        lines.append("  |  ".join(parts))
 
     # ---- Sleep block ----
     lines.append("")
@@ -134,7 +140,9 @@ def build_morning_message(target_date: date | None = None) -> str:
         light_pct = _pct(slp.get("light_milli"), slp.get("total_milli"))
         debt_str = _milli_to_hm(slp.get("debt_milli"))
 
-        lines.append(f"*Sleep: {total_str}*  |  Perf: {slp.get('performance_pct')}%  |  Efficiency: {slp.get('efficiency_pct')}%")
+        perf = round(slp["performance_pct"], 1) if slp.get("performance_pct") else "—"
+        eff = round(slp["efficiency_pct"], 1) if slp.get("efficiency_pct") else "—"
+        lines.append(f"*Sleep: {total_str}*  |  Perf: {perf}%  |  Efficiency: {eff}%")
         lines.append(f"Stages: {deep_pct} deep  /  {rem_pct} REM  /  {light_pct} light")
         if slp.get("disturbances") is not None:
             lines.append(f"Disturbances: {slp['disturbances']}  |  Sleep debt: {debt_str}")
