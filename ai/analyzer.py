@@ -35,12 +35,17 @@ genai.configure(api_key=GEMINI_API_KEY)
 
 
 def _generate(model_name: str, system: str, prompt: str, max_tokens: int = 8192) -> str:
-    model = genai.GenerativeModel(model_name=model_name, system_instruction=system)
-    response = model.generate_content(
-        prompt,
-        generation_config=genai.GenerationConfig(max_output_tokens=max_tokens),
-    )
-    return response.text
+    try:
+        model = genai.GenerativeModel(model_name=model_name, system_instruction=system)
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.GenerationConfig(max_output_tokens=max_tokens),
+        )
+        return response.text
+    except Exception as e:
+        from slack_bot.alerts import schedule_alert
+        schedule_alert("Gemini API", e, f"model: {model_name}")
+        raise
 
 
 def _save_insight(insight_type: str, content: str):

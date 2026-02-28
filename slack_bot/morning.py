@@ -101,6 +101,8 @@ def build_morning_message(target_date: date | None = None) -> str:
         insight = " ".join(insight.splitlines()).strip()
     except Exception as e:
         logger.warning(f"Could not generate insight: {e}")
+        from slack_bot.alerts import schedule_alert
+        schedule_alert("Gemini/morning-insight", e)
 
     lines = [f"*Morning Health Summary — {target_date}*", ""]
 

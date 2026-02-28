@@ -36,6 +36,11 @@ async def main():
     # Slack web client (async)
     slack_client = app.client
 
+    # Wire alert module so any component can send Slack alerts
+    from slack_bot.alerts import init_alerts
+    init_alerts(slack_client)
+    logger.info("Alert module initialized")
+
     # Scheduler
     scheduler = create_scheduler(slack_client)
     scheduler.start()

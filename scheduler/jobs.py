@@ -17,13 +17,16 @@ logger = logging.getLogger(__name__)
 
 async def _morning_job(slack_client):
     from slack_bot.morning import post_morning_message
+    from slack_bot.alerts import notify_sync_success, notify_error
     from whoop.sync import sync_all
 
     logger.info("Running morning job: sync + morning message")
     try:
-        await sync_all(days=3)
+        counts = await sync_all(days=3)
+        await notify_sync_success("Morning", counts, days=3)
     except Exception as e:
         logger.error(f"Morning sync failed: {e}")
+        await notify_error("Morning sync", e)
 
     await post_morning_message(slack_client)
 
@@ -34,13 +37,16 @@ async def _midday_sync_job(slack_client):
     from ai.flags import run_all_checks
     from ai.context import get_hrv_baseline
     from ai.analyzer import analyze_flags
+    from slack_bot.alerts import notify_sync_success, notify_error
     from config.settings import SLACK_USER_ID
 
     logger.info("Running midday sync")
     try:
-        await sync_all(days=1)
+        counts = await sync_all(days=1)
+        await notify_sync_success("Midday", counts, days=1)
     except Exception as e:
         logger.error(f"Midday sync failed: {e}")
+        await notify_error("Midday sync", e)
         return
 
     hrv_baseline = get_hrv_baseline()
@@ -60,12 +66,15 @@ async def _evening_journal_job(slack_client):
 async def _weekly_job(slack_client):
     from whoop.sync import sync_all
     from slack_bot.weekly import post_weekly_report
+    from slack_bot.alerts import notify_sync_success, notify_error
 
     logger.info("Running weekly report job")
     try:
-        await sync_all(days=7)
+        counts = await sync_all(days=7)
+        await notify_sync_success("Weekly", counts, days=7)
     except Exception as e:
         logger.error(f"Weekly sync failed: {e}")
+        await notify_error("Weekly sync", e)
 
     await post_weekly_report(slack_client)
 
