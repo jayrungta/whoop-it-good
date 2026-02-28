@@ -10,6 +10,7 @@ No local server required.
 
 import asyncio
 import os
+import secrets
 import urllib.parse
 from pathlib import Path
 
@@ -28,14 +29,16 @@ from config.settings import (
 ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
 
 
-def _build_auth_url() -> str:
+def _build_auth_url() -> tuple[str, str]:
+    state = secrets.token_urlsafe(16)
     params = {
         "client_id": WHOOP_CLIENT_ID,
         "redirect_uri": WHOOP_REDIRECT_URI,
         "response_type": "code",
         "scope": WHOOP_SCOPES,
+        "state": state,
     }
-    return f"{WHOOP_AUTH_URL}?{urllib.parse.urlencode(params)}"
+    return f"{WHOOP_AUTH_URL}?{urllib.parse.urlencode(params)}", state
 
 
 async def exchange_code(code: str) -> dict:
@@ -86,7 +89,7 @@ def run_oauth_flow():
     3. Browser redirects to localhost:8000/callback?code=... (will show connection error — that's fine)
     4. Copy the full URL from the browser address bar and paste it here
     """
-    auth_url = _build_auth_url()
+    auth_url, state = _build_auth_url()
     print("\n" + "="*60)
     print("Open this URL in your browser:")
     print(f"\n{auth_url}\n")
