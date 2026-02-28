@@ -15,17 +15,21 @@ Keep it under 8 lines total. No bullet points. No markdown. Plain text only.
 """.strip()
 
 WEEKLY_REPORT_PROMPT = """
-Write Jay's weekly health report for Slack. Cover:
+Write Jay's weekly health report for Slack. Use this exact format:
 
-1. Recovery trends — what drove best/worst days this week
-2. Journal correlations — how alcohol, stress, caffeine tracked with HRV/recovery
-3. HRV trend vs previous 4-week average
-4. Sleep debt balance (hours gained/lost)
-5. Workout load vs recovery capacity — is he in balance or accumulating fatigue?
-6. 1-2 actionable recommendations based on patterns
+*Recovery* — one sentence on best/worst days and what drove them. Include scores.
+*HRV* — weekly avg vs 4-week avg, direction of trend. One sentence.
+*Sleep* — avg hours, debt balance, worst night. One sentence.
+*Lifestyle* — any journal correlations worth calling out (alcohol, stress, caffeine vs HRV). One sentence. Skip if no journal data.
+*Training* — workout load vs recovery capacity. One sentence.
+*This week* — 2 bullet points max, the most actionable things he should do differently. Lead each with a verb.
 
-Be specific — use his actual numbers. Flag anything that needs attention.
-Keep each section to 2-3 lines. Total should be under 30 lines.
+Rules:
+- Use Slack bold (*text*) for section labels only
+- Each section is one sentence, max two. No paragraphs.
+- Skip any section with no data
+- Use his actual numbers throughout
+- No intro, no outro, no "here is your report"
 """.strip()
 
 QA_SYSTEM_ADDENDUM = """
