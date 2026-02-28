@@ -1,6 +1,5 @@
 """
 Gemini analysis engine.
-Handles morning summaries, weekly reports, Q&A, and flag analysis.
 """
 
 import logging
@@ -18,7 +17,6 @@ from ai.context import (
 from ai.flags import Flag, run_all_checks
 from ai.prompts import (
     FLAG_ANALYSIS_PROMPT,
-    MORNING_SUMMARY_PROMPT,
     QA_SYSTEM_ADDENDUM,
     WEEKLY_REPORT_PROMPT,
 )
@@ -36,12 +34,8 @@ logger = logging.getLogger(__name__)
 genai.configure(api_key=GEMINI_API_KEY)
 
 
-def _get_model(model_name: str, system: str) -> genai.GenerativeModel:
-    return genai.GenerativeModel(model_name=model_name, system_instruction=system)
-
-
 def _generate(model_name: str, system: str, prompt: str, max_tokens: int) -> str:
-    model = _get_model(model_name, system)
+    model = genai.GenerativeModel(model_name=model_name, system_instruction=system)
     response = model.generate_content(
         prompt,
         generation_config=genai.GenerationConfig(max_output_tokens=max_tokens),
@@ -54,30 +48,33 @@ def _save_insight(insight_type: str, content: str):
         db.add(AIInsight(insight_type=insight_type, content=content))
 
 
-def generate_morning_summary(target_date: date | None = None) -> tuple[str, list[Flag]]:
-    """Generate morning summary text + active flags for Slack."""
+def generate_daily_insight(context: str, flags: list[Flag]) -> str:
+    """
+    Returns 1-2 sentences of insight only — no formatting, no metrics.
+    morning.py handles layout; this just adds the AI angle.
+    """
     hrv_baseline = get_hrv_baseline()
     rhr_baseline = get_rhr_baseline()
     system = get_system_prompt(hrv_baseline=hrv_baseline, rhr_baseline=rhr_baseline)
-    context = build_daily_context(target_date)
-    flags = run_all_checks(hrv_baseline=hrv_baseline)
 
     flag_text = ""
     if flags:
-        flag_text = "\n\nACTIVE FLAGS:\n" + "\n".join(f"- {f.message}" for f in flags)
+        flag_text = "\n\nActive flags:\n" + "\n".join(f"- {f.message}" for f in flags)
 
-    content = _generate(
-        GEMINI_SUMMARY_MODEL, system,
-        f"{MORNING_SUMMARY_PROMPT}\n\n{context}{flag_text}",
-        max_tokens=400,
+    prompt = (
+        "Based on today's biometric data below, write 1-2 sentences of insight "
+        "for Jay. Be specific — reference his actual numbers and any patterns. "
+        "No bullet points, no headers, plain text only.\n\n"
+        f"{context}{flag_text}"
     )
+
+    content = _generate(GEMINI_SUMMARY_MODEL, system, prompt, max_tokens=150)
     _save_insight("daily", content)
-    logger.info("Morning summary generated")
-    return content, flags
+    logger.info("Daily insight generated")
+    return content.strip()
 
 
 def generate_weekly_report() -> str:
-    """Generate the Sunday weekly report."""
     hrv_baseline = get_hrv_baseline()
     rhr_baseline = get_rhr_baseline()
     system = get_system_prompt(hrv_baseline=hrv_baseline, rhr_baseline=rhr_baseline)
@@ -94,24 +91,18 @@ def generate_weekly_report() -> str:
 
 
 def answer_question(question: str) -> str:
-    """Answer a conversational Q&A from the user."""
     hrv_baseline = get_hrv_baseline()
     rhr_baseline = get_rhr_baseline()
     system = get_system_prompt(hrv_baseline=hrv_baseline, rhr_baseline=rhr_baseline)
     system += f"\n\n{QA_SYSTEM_ADDENDUM}"
     context = build_qa_context(question)
 
-    content = _generate(
-        GEMINI_ANALYSIS_MODEL, system,
-        context,
-        max_tokens=600,
-    )
+    content = _generate(GEMINI_ANALYSIS_MODEL, system, context, max_tokens=600)
     _save_insight("qa", content)
     return content
 
 
 def analyze_flags(flags: list[Flag]) -> str:
-    """Generate a concise Slack message explaining active flags."""
     if not flags:
         return ""
 
