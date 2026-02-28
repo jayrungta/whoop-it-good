@@ -94,7 +94,19 @@ def build_morning_message(target_date: date | None = None) -> str:
     rec = data["recovery"]
     slp = data["sleep"]
 
+    # ---- AI insight (generated first, displayed first) ----
+    insight = ""
+    try:
+        insight = generate_daily_insight(context, flags)
+        insight = " ".join(insight.splitlines()).strip()
+    except Exception as e:
+        logger.warning(f"Could not generate insight: {e}")
+
     lines = [f"*Morning Health Summary — {target_date}*", ""]
+
+    if insight:
+        lines.append(f"_{insight}_")
+        lines.append("")
 
     # ---- Recovery block ----
     score = rec.get("score")
@@ -155,14 +167,6 @@ def build_morning_message(target_date: date | None = None) -> str:
         for flag in flags:
             icon = "🚨" if flag.severity == "alert" else "⚠️"
             lines.append(f"{icon} {flag.message}")
-
-    # ---- AI insight ----
-    lines.append("")
-    try:
-        insight = generate_daily_insight(context, flags)
-        lines.append(f"_{insight}_")
-    except Exception as e:
-        logger.warning(f"Could not generate insight: {e}")
 
     lines.append("")
     lines.append(f"<{DASHBOARD_URL}|View Dashboard →>")

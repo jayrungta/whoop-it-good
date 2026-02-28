@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 genai.configure(api_key=GEMINI_API_KEY)
 
 
-def _generate(model_name: str, system: str, prompt: str, max_tokens: int) -> str:
+def _generate(model_name: str, system: str, prompt: str, max_tokens: int = 8192) -> str:
     model = genai.GenerativeModel(model_name=model_name, system_instruction=system)
     response = model.generate_content(
         prompt,
@@ -62,13 +62,13 @@ def generate_daily_insight(context: str, flags: list[Flag]) -> str:
         flag_text = "\n\nActive flags:\n" + "\n".join(f"- {f.message}" for f in flags)
 
     prompt = (
-        "Based on today's biometric data below, write 1-2 sentences of insight "
-        "for Jay. Be specific — reference his actual numbers and any patterns. "
-        "No bullet points, no headers, plain text only.\n\n"
+        "Based on today's data, give Jay one sharp observation and one concrete action for today. "
+        "Max 2 sentences. Lead with the most important signal. Skip anything obvious. "
+        "No fluff, no 'your recovery is X%' restatements — he can already see the numbers.\n\n"
         f"{context}{flag_text}"
     )
 
-    content = _generate(GEMINI_SUMMARY_MODEL, system, prompt, max_tokens=1024)
+    content = _generate(GEMINI_SUMMARY_MODEL, system, prompt, max_tokens=8192)
     _save_insight("daily", content)
     logger.info("Daily insight generated")
     return content.strip()
