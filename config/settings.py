@@ -9,7 +9,7 @@ WHOOP_CLIENT_SECRET = os.getenv("WHOOP_CLIENT_SECRET", "")
 WHOOP_REDIRECT_URI = os.getenv("WHOOP_REDIRECT_URI", "http://localhost:8000/callback")
 WHOOP_AUTH_URL = "https://api.prod.whoop.com/oauth/oauth2/auth"
 WHOOP_TOKEN_URL = "https://api.prod.whoop.com/oauth/oauth2/token"
-WHOOP_API_BASE = "https://api.prod.whoop.com/developer/v1"
+WHOOP_API_BASE = "https://api.prod.whoop.com/developer/v2"
 WHOOP_SCOPES = "offline read:recovery read:sleep read:workout read:cycles read:body_measurement"
 
 # Slack
