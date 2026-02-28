@@ -83,7 +83,7 @@ def generate_weekly_report() -> str:
     content = _generate(
         GEMINI_ANALYSIS_MODEL, system,
         f"{WEEKLY_REPORT_PROMPT}\n\n{context}",
-        max_tokens=800,
+        max_tokens=8192,
     )
     _save_insight("weekly", content)
     logger.info("Weekly report generated")
@@ -97,7 +97,7 @@ def answer_question(question: str) -> str:
     system += f"\n\n{QA_SYSTEM_ADDENDUM}"
     context = build_qa_context(question)
 
-    content = _generate(GEMINI_ANALYSIS_MODEL, system, context, max_tokens=600)
+    content = _generate(GEMINI_ANALYSIS_MODEL, system, context, max_tokens=8192)
     _save_insight("qa", content)
     return content
 
@@ -113,7 +113,7 @@ def analyze_flags(flags: list[Flag]) -> str:
     content = _generate(
         GEMINI_SUMMARY_MODEL, system,
         f"{FLAG_ANALYSIS_PROMPT}\n\nActive flags:\n{flag_details}",
-        max_tokens=300,
+        max_tokens=8192,
     )
     _save_insight("alert", content)
     return content
