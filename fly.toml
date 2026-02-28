@@ -7,7 +7,6 @@ primary_region = "ewr"
   MORNING_HOUR = "8"
   EVENING_JOURNAL_HOUR = "21"
   TIMEZONE = "America/New_York"
-  WHOOP_REDIRECT_URI = "http://localhost:8000/callback"
 
 [deploy]
   release_command = "alembic upgrade head"
