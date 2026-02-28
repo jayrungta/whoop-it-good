@@ -1,17 +1,23 @@
-app = "whoop-bot"
-primary_region = "ewr"
+# fly.toml app configuration file generated for whoop-it-good on 2026-02-28T16:54:31Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'whoop-it-good'
+primary_region = 'iad'
 
 [build]
 
-[env]
-  MORNING_HOUR = "8"
-  EVENING_JOURNAL_HOUR = "21"
-  TIMEZONE = "America/New_York"
-
-[deploy]
-  release_command = "alembic upgrade head"
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
 
 [[vm]]
-  memory = "256mb"
-  cpu_kind = "shared"
+  memory = '1gb'
+  cpu_kind = 'shared'
   cpus = 1
+  memory_mb = 1024
