@@ -1,4 +1,8 @@
-# whoop-it-good
+<p align="center">
+  <img src="assets/banner.png" alt="WHOOP it good!" width="480">
+</p>
+
+# WHOOP it good!
 
 A personal AI health companion that turns raw Whoop biometric data into actionable insights delivered via Slack.
 
