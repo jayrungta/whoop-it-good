@@ -17,8 +17,8 @@ SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN", "")
 SLACK_APP_TOKEN = os.getenv("SLACK_APP_TOKEN", "")
 SLACK_USER_ID = os.getenv("SLACK_USER_ID", "")
 
-# Claude
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+# Gemini
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # Database
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://localhost/whoop_ai")
@@ -28,9 +28,9 @@ MORNING_HOUR = int(os.getenv("MORNING_HOUR", "8"))
 EVENING_JOURNAL_HOUR = int(os.getenv("EVENING_JOURNAL_HOUR", "21"))
 TIMEZONE = os.getenv("TIMEZONE", "America/New_York")
 
-# Claude models
-CLAUDE_ANALYSIS_MODEL = "claude-sonnet-4-6"
-CLAUDE_SUMMARY_MODEL = "claude-haiku-4-5-20251001"
+# Gemini models
+GEMINI_ANALYSIS_MODEL = "gemini-2.0-flash"    # Q&A + weekly reports
+GEMINI_SUMMARY_MODEL = "gemini-2.0-flash"     # morning summaries + flag alerts
 
 # Flag thresholds
 HRV_DROP_THRESHOLD_PCT = 0.15

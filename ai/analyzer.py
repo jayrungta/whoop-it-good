@@ -1,12 +1,12 @@
 """
-Core Claude analysis engine.
+Gemini analysis engine.
 Handles morning summaries, weekly reports, Q&A, and flag analysis.
 """
 
 import logging
 from datetime import date
 
-import anthropic
+import google.generativeai as genai
 
 from ai.context import (
     build_daily_context,
@@ -24,16 +24,29 @@ from ai.prompts import (
 )
 from config.personal_context import get_system_prompt
 from config.settings import (
-    ANTHROPIC_API_KEY,
-    CLAUDE_ANALYSIS_MODEL,
-    CLAUDE_SUMMARY_MODEL,
+    GEMINI_API_KEY,
+    GEMINI_ANALYSIS_MODEL,
+    GEMINI_SUMMARY_MODEL,
 )
 from db.database import get_db
 from db.models import AIInsight
 
 logger = logging.getLogger(__name__)
 
-_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+genai.configure(api_key=GEMINI_API_KEY)
+
+
+def _get_model(model_name: str, system: str) -> genai.GenerativeModel:
+    return genai.GenerativeModel(model_name=model_name, system_instruction=system)
+
+
+def _generate(model_name: str, system: str, prompt: str, max_tokens: int) -> str:
+    model = _get_model(model_name, system)
+    response = model.generate_content(
+        prompt,
+        generation_config=genai.GenerationConfig(max_output_tokens=max_tokens),
+    )
+    return response.text
 
 
 def _save_insight(insight_type: str, content: str):
@@ -53,13 +66,11 @@ def generate_morning_summary(target_date: date | None = None) -> tuple[str, list
     if flags:
         flag_text = "\n\nACTIVE FLAGS:\n" + "\n".join(f"- {f.message}" for f in flags)
 
-    message = _client.messages.create(
-        model=CLAUDE_SUMMARY_MODEL,
+    content = _generate(
+        GEMINI_SUMMARY_MODEL, system,
+        f"{MORNING_SUMMARY_PROMPT}\n\n{context}{flag_text}",
         max_tokens=400,
-        system=system,
-        messages=[{"role": "user", "content": f"{MORNING_SUMMARY_PROMPT}\n\n{context}{flag_text}"}],
     )
-    content = message.content[0].text
     _save_insight("daily", content)
     logger.info("Morning summary generated")
     return content, flags
@@ -72,13 +83,11 @@ def generate_weekly_report() -> str:
     system = get_system_prompt(hrv_baseline=hrv_baseline, rhr_baseline=rhr_baseline)
     context = build_weekly_context()
 
-    message = _client.messages.create(
-        model=CLAUDE_ANALYSIS_MODEL,
+    content = _generate(
+        GEMINI_ANALYSIS_MODEL, system,
+        f"{WEEKLY_REPORT_PROMPT}\n\n{context}",
         max_tokens=800,
-        system=system,
-        messages=[{"role": "user", "content": f"{WEEKLY_REPORT_PROMPT}\n\n{context}"}],
     )
-    content = message.content[0].text
     _save_insight("weekly", content)
     logger.info("Weekly report generated")
     return content
@@ -92,13 +101,11 @@ def answer_question(question: str) -> str:
     system += f"\n\n{QA_SYSTEM_ADDENDUM}"
     context = build_qa_context(question)
 
-    message = _client.messages.create(
-        model=CLAUDE_ANALYSIS_MODEL,
+    content = _generate(
+        GEMINI_ANALYSIS_MODEL, system,
+        context,
         max_tokens=600,
-        system=system,
-        messages=[{"role": "user", "content": context}],
     )
-    content = message.content[0].text
     _save_insight("qa", content)
     return content
 
@@ -112,12 +119,10 @@ def analyze_flags(flags: list[Flag]) -> str:
     system = get_system_prompt(hrv_baseline=hrv_baseline)
     flag_details = "\n".join(f"- {f.key}: {f.message}" for f in flags)
 
-    message = _client.messages.create(
-        model=CLAUDE_SUMMARY_MODEL,
+    content = _generate(
+        GEMINI_SUMMARY_MODEL, system,
+        f"{FLAG_ANALYSIS_PROMPT}\n\nActive flags:\n{flag_details}",
         max_tokens=300,
-        system=system,
-        messages=[{"role": "user", "content": f"{FLAG_ANALYSIS_PROMPT}\n\nActive flags:\n{flag_details}"}],
     )
-    content = message.content[0].text
     _save_insight("alert", content)
     return content
