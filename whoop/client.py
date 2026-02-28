@@ -21,6 +21,8 @@ class WhoopClient:
         self._access_token: str | None = os.getenv("WHOOP_ACCESS_TOKEN")
         self._refresh_token: str | None = os.getenv("WHOOP_REFRESH_TOKEN")
         self._client: httpx.AsyncClient | None = None
+        self._refresh_lock = asyncio.Lock()
+        self._refreshed = False  # ensures only one refresh per client lifetime
 
     async def __aenter__(self):
         self._client = httpx.AsyncClient(base_url=WHOOP_API_BASE, timeout=30)
@@ -34,16 +36,20 @@ class WhoopClient:
         return {"Authorization": f"Bearer {self._access_token}"}
 
     async def _refresh_if_needed(self, response: httpx.Response) -> bool:
-        if response.status_code == 401 and self._refresh_token:
+        if response.status_code != 401 or not self._refresh_token:
+            return False
+        async with self._refresh_lock:
+            if self._refreshed:
+                # Another parallel request already refreshed — just retry with new token
+                return True
             tokens = await refresh_tokens(self._refresh_token)
             self._access_token = tokens["access_token"]
             self._refresh_token = tokens["refresh_token"]
-            # Update env for persistence
             os.environ["WHOOP_ACCESS_TOKEN"] = self._access_token
             os.environ["WHOOP_REFRESH_TOKEN"] = self._refresh_token
             save_tokens(tokens)
+            self._refreshed = True
             return True
-        return False
 
     async def _get(self, path: str, params: dict | None = None) -> dict:
         resp = await self._client.get(path, headers=self._auth_headers(), params=params)
