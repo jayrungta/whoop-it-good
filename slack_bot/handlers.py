@@ -31,8 +31,11 @@ def register_handlers(app):
         if event.get("bot_id"):
             return
 
+        logger.info(f"Message event — user: {user}, channel_type: {channel_type}, expected_user: {SLACK_USER_ID}")
+
         # Only respond to messages from Jay
         if user != SLACK_USER_ID:
+            logger.warning(f"Ignoring message from unexpected user: {user}")
             return
 
         # If this is a thread reply to a pending journal prompt, handle it
