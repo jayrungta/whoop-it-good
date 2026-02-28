@@ -113,3 +113,5 @@ class AIInsight(Base):
     data_window_start = Column(DateTime(timezone=True))
     data_window_end = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+

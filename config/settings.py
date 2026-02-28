@@ -23,6 +23,9 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 # Database
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://localhost/whoop_ai")
 
+# Dashboard
+DASHBOARD_URL = os.getenv("DASHBOARD_URL", "http://localhost:8501")
+
 # Scheduler
 MORNING_HOUR = int(os.getenv("MORNING_HOUR", "8"))
 EVENING_JOURNAL_HOUR = int(os.getenv("EVENING_JOURNAL_HOUR", "21"))

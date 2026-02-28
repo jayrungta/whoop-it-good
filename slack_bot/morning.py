@@ -6,13 +6,11 @@ from datetime import date, datetime, timedelta, timezone
 from ai.analyzer import generate_daily_insight, analyze_flags
 from ai.context import build_daily_context, get_hrv_baseline, get_rhr_baseline
 from ai.flags import run_all_checks
-from config.settings import SLACK_USER_ID
+from config.settings import SLACK_USER_ID, DASHBOARD_URL
 from db.database import get_db
 from db.models import WhoopRecovery, WhoopSleep
 
 logger = logging.getLogger(__name__)
-
-DASHBOARD_URL = "http://localhost:8501"
 
 
 def _recovery_emoji(score: int | None) -> str:

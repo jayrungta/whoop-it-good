@@ -1,0 +1,50 @@
+services:
+  # Slack bot + APScheduler (no port needed — Socket Mode)
+  - type: worker
+    name: whoop-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: WHOOP_CLIENT_ID
+        sync: false
+      - key: WHOOP_CLIENT_SECRET
+        sync: false
+      - key: WHOOP_REDIRECT_URI
+        value: http://localhost:8000/callback
+      - key: WHOOP_ACCESS_TOKEN
+        sync: false
+      - key: WHOOP_REFRESH_TOKEN
+        sync: false
+      - key: SLACK_BOT_TOKEN
+        sync: false
+      - key: SLACK_APP_TOKEN
+        sync: false
+      - key: SLACK_USER_ID
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DASHBOARD_URL
+        sync: false
+      - key: MORNING_HOUR
+        value: "8"
+      - key: EVENING_JOURNAL_HOUR
+        value: "21"
+      - key: TIMEZONE
+        value: America/New_York
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+
+  # Streamlit dashboard (web service)
+  - type: web
+    name: whoop-dashboard
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run dashboard/app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.12.0"

@@ -75,10 +75,15 @@ async def refresh_tokens(refresh_token: str) -> dict:
 
 
 def save_tokens(tokens: dict):
-    """Persist tokens to .env file."""
-    set_key(str(ENV_PATH), "WHOOP_ACCESS_TOKEN", tokens["access_token"])
-    set_key(str(ENV_PATH), "WHOOP_REFRESH_TOKEN", tokens["refresh_token"])
-    print("Tokens saved to .env")
+    """Persist tokens. Writes to .env locally; on production just updates os.environ."""
+    os.environ["WHOOP_ACCESS_TOKEN"] = tokens["access_token"]
+    os.environ["WHOOP_REFRESH_TOKEN"] = tokens["refresh_token"]
+    try:
+        if ENV_PATH.exists():
+            set_key(str(ENV_PATH), "WHOOP_ACCESS_TOKEN", tokens["access_token"])
+            set_key(str(ENV_PATH), "WHOOP_REFRESH_TOKEN", tokens["refresh_token"])
+    except Exception:
+        pass  # Fine in production — tokens live in env vars set via Render dashboard
 
 
 def run_oauth_flow():
