@@ -111,11 +111,15 @@ def run_oauth_flow():
     print(f"\nOpening browser for Whoop auth...\nIf it doesn't open: {auth_url}\n")
     webbrowser.open(auth_url)
 
-    # Start local callback server
+    # Keep handling requests until we get the code (browser may send favicon etc. first)
     server = HTTPServer(("localhost", 8000), _CallbackHandler)
-    thread = Thread(target=server.handle_request)
-    thread.start()
-    thread.join(timeout=120)
+    server.timeout = 120
+    print("Waiting for OAuth callback on http://localhost:8000/callback ...")
+    while not _auth_code:
+        server.handle_request()
+        if server.timeout and not _auth_code:
+            break
+    server.server_close()
 
     if not _auth_code:
         print("No auth code received. Timed out.")
