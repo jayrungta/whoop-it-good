@@ -2,21 +2,16 @@
 Whoop OAuth2 flow + token refresh.
 
 First-time setup:
-    python -m whoop.auth
+    python3 -m whoop.auth
 
-This launches a local server on port 8000, prints the auth URL,
-waits for the redirect, exchanges the code for tokens, and saves
-them to .env.
+Prints the auth URL, you approve in browser, paste the redirect URL back.
+No local server required.
 """
 
 import asyncio
 import os
-import sys
 import urllib.parse
-import webbrowser
-from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from threading import Thread
 
 import httpx
 from dotenv import load_dotenv, set_key
@@ -31,27 +26,6 @@ from config.settings import (
 )
 
 ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
-
-_auth_code: str | None = None
-
-
-class _CallbackHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        global _auth_code
-        parsed = urllib.parse.urlparse(self.path)
-        params = urllib.parse.parse_qs(parsed.query)
-        if "code" in params:
-            _auth_code = params["code"][0]
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(b"<h2>Auth complete! You can close this tab.</h2>")
-        else:
-            self.send_response(400)
-            self.end_headers()
-            self.wfile.write(b"Missing code parameter.")
-
-    def log_message(self, *args):
-        pass  # suppress server logs
 
 
 def _build_auth_url() -> str:
@@ -104,30 +78,39 @@ def save_tokens(tokens: dict):
 
 
 def run_oauth_flow():
-    """Interactive OAuth2 flow. Opens browser, captures redirect, saves tokens."""
-    global _auth_code
+    """
+    Manual OAuth2 flow — no local server needed.
 
+    1. Opens the Whoop auth URL in your browser
+    2. You approve access
+    3. Browser redirects to localhost:8000/callback?code=... (will show connection error — that's fine)
+    4. Copy the full URL from the browser address bar and paste it here
+    """
     auth_url = _build_auth_url()
-    print(f"\nOpening browser for Whoop auth...\nIf it doesn't open: {auth_url}\n")
-    webbrowser.open(auth_url)
+    print("\n" + "="*60)
+    print("Open this URL in your browser:")
+    print(f"\n{auth_url}\n")
+    print("="*60)
+    print("\nAfter approving, the browser will redirect to localhost.")
+    print("It will show a connection error — that's expected.")
+    print("Copy the full URL from the address bar and paste it below.\n")
 
-    # Keep handling requests until we get the code (browser may send favicon etc. first)
-    server = HTTPServer(("localhost", 8000), _CallbackHandler)
-    server.timeout = 120
-    print("Waiting for OAuth callback on http://localhost:8000/callback ...")
-    while not _auth_code:
-        server.handle_request()
-        if server.timeout and not _auth_code:
-            break
-    server.server_close()
+    redirect_url = input("Paste redirect URL here: ").strip()
 
-    if not _auth_code:
-        print("No auth code received. Timed out.")
-        sys.exit(1)
+    parsed = urllib.parse.urlparse(redirect_url)
+    params = urllib.parse.parse_qs(parsed.query)
 
-    tokens = asyncio.run(exchange_code(_auth_code))
+    if "code" not in params:
+        print(f"\nNo 'code' found in URL. Got params: {list(params.keys())}")
+        print("Make sure you copied the full URL from the address bar.")
+        return
+
+    code = params["code"][0]
+    print(f"\nGot auth code. Exchanging for tokens...")
+
+    tokens = asyncio.run(exchange_code(code))
     save_tokens(tokens)
-    print("OAuth complete. Access token and refresh token saved.")
+    print("Done! You can now run: python3 -m whoop.sync")
 
 
 if __name__ == "__main__":
