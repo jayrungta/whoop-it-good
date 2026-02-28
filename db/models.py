@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import (
     Column, Integer, BigInteger, String, Float, Boolean, Text,
-    DateTime, Date, Numeric, ForeignKey, UniqueConstraint
+    DateTime, Date
 )
 from sqlalchemy.orm import DeclarativeBase
 
@@ -13,7 +13,7 @@ class Base(DeclarativeBase):
 class WhoopCycle(Base):
     __tablename__ = "whoop_cycles"
 
-    id = Column(BigInteger, primary_key=True)          # Whoop cycle_id
+    id = Column(BigInteger, primary_key=True)   # integer per API spec
     user_id = Column(BigInteger, nullable=False)
     start = Column(DateTime(timezone=True))
     end = Column(DateTime(timezone=True))
@@ -30,8 +30,9 @@ class WhoopRecovery(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     cycle_id = Column(BigInteger, unique=True, nullable=False)
-    sleep_id = Column(BigInteger)
+    sleep_id = Column(String(36))               # UUID string per API spec
     user_id = Column(BigInteger, nullable=False)
+    user_calibrating = Column(Boolean)
     recovery_score = Column(Integer)
     hrv_rmssd_milli = Column(Float)
     resting_heart_rate = Column(Integer)
@@ -45,22 +46,23 @@ class WhoopRecovery(Base):
 class WhoopSleep(Base):
     __tablename__ = "whoop_sleep"
 
-    id = Column(BigInteger, primary_key=True)          # Whoop sleep id
+    id = Column(String(36), primary_key=True)   # UUID string per API spec
     cycle_id = Column(BigInteger)
     user_id = Column(BigInteger, nullable=False)
+    nap = Column(Boolean)
     start = Column(DateTime(timezone=True))
     end = Column(DateTime(timezone=True))
     total_in_bed_milli = Column(BigInteger)
     light_sleep_milli = Column(BigInteger)
     slow_wave_milli = Column(BigInteger)
     rem_sleep_milli = Column(BigInteger)
-    awake_count = Column(Integer)                      # disturbances
+    awake_count = Column(Integer)               # disturbance_count
     sleep_cycle_count = Column(Integer)
     sleep_performance_pct = Column(Float)
     sleep_consistency_pct = Column(Float)
     sleep_efficiency_pct = Column(Float)
     respiratory_rate = Column(Float)
-    sleep_debt_milli = Column(BigInteger)
+    sleep_debt_milli = Column(BigInteger)       # from score.sleep_needed.need_from_sleep_debt_milli
     score_state = Column(String(50))
     synced_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
@@ -68,7 +70,7 @@ class WhoopSleep(Base):
 class WhoopWorkout(Base):
     __tablename__ = "whoop_workouts"
 
-    id = Column(BigInteger, primary_key=True)          # Whoop workout id
+    id = Column(String(36), primary_key=True)   # UUID string per API spec
     cycle_id = Column(BigInteger)
     user_id = Column(BigInteger, nullable=False)
     sport_name = Column(String(100))
@@ -94,10 +96,10 @@ class JournalEntry(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     date = Column(Date, unique=True, nullable=False)
-    alcohol_units = Column(Integer)                    # nullable = no alcohol logged
-    stress_level = Column(Integer)                     # 1–5
+    alcohol_units = Column(Integer)
+    stress_level = Column(Integer)              # 1–5
     caffeine = Column(Boolean)
-    late_caffeine = Column(Boolean)                    # after 2pm
+    late_caffeine = Column(Boolean)             # after 2pm
     notes = Column(Text)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 

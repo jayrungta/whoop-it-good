@@ -3,8 +3,8 @@ Sync Whoop data into PostgreSQL.
 Pulls cycles, recovery, sleep, and workouts — deduplicates by primary ID.
 
 Usage:
-    python -m whoop.sync            # full backfill (last 90 days)
-    python -m whoop.sync --days 7   # last N days
+    python3 -m whoop.sync            # full backfill (last 90 days)
+    python3 -m whoop.sync --days 7   # last N days
 """
 
 import argparse
@@ -22,10 +22,9 @@ logger = logging.getLogger(__name__)
 def _parse_dt(s: str | None) -> datetime | None:
     if not s:
         return None
-    # Whoop returns ISO strings with trailing Z
-    s = s.rstrip("Z").replace("T", " ")
     try:
-        return datetime.fromisoformat(s).replace(tzinfo=timezone.utc)
+        # Handle both trailing Z and offset formats
+        return datetime.fromisoformat(s.replace("Z", "+00:00"))
     except ValueError:
         return None
 
@@ -33,11 +32,10 @@ def _parse_dt(s: str | None) -> datetime | None:
 def _sync_cycles(db, records: list[dict]) -> int:
     saved = 0
     for r in records:
-        existing = db.get(WhoopCycle, r["id"])
-        if existing:
+        if db.get(WhoopCycle, r["id"]):
             continue
         score = r.get("score") or {}
-        cycle = WhoopCycle(
+        db.add(WhoopCycle(
             id=r["id"],
             user_id=r["user_id"],
             start=_parse_dt(r.get("start")),
@@ -47,8 +45,7 @@ def _sync_cycles(db, records: list[dict]) -> int:
             avg_heart_rate=score.get("average_heart_rate"),
             max_heart_rate=score.get("max_heart_rate"),
             score_state=r.get("score_state"),
-        )
-        db.add(cycle)
+        ))
         saved += 1
     return saved
 
@@ -56,14 +53,14 @@ def _sync_cycles(db, records: list[dict]) -> int:
 def _sync_recovery(db, records: list[dict]) -> int:
     saved = 0
     for r in records:
-        existing = db.query(WhoopRecovery).filter_by(cycle_id=r["cycle_id"]).first()
-        if existing:
+        if db.query(WhoopRecovery).filter_by(cycle_id=r["cycle_id"]).first():
             continue
         score = r.get("score") or {}
-        rec = WhoopRecovery(
+        db.add(WhoopRecovery(
             cycle_id=r["cycle_id"],
-            sleep_id=r.get("sleep_id"),
+            sleep_id=r.get("sleep_id"),             # UUID string
             user_id=r["user_id"],
+            user_calibrating=score.get("user_calibrating"),
             recovery_score=score.get("recovery_score"),
             hrv_rmssd_milli=score.get("hrv_rmssd_milli"),
             resting_heart_rate=score.get("resting_heart_rate"),
@@ -71,8 +68,7 @@ def _sync_recovery(db, records: list[dict]) -> int:
             skin_temp_celsius=score.get("skin_temp_celsius"),
             score_state=r.get("score_state"),
             created_at=_parse_dt(r.get("created_at")),
-        )
-        db.add(rec)
+        ))
         saved += 1
     return saved
 
@@ -80,31 +76,31 @@ def _sync_recovery(db, records: list[dict]) -> int:
 def _sync_sleep(db, records: list[dict]) -> int:
     saved = 0
     for r in records:
-        existing = db.get(WhoopSleep, r["id"])
-        if existing:
+        if db.get(WhoopSleep, r["id"]):
             continue
         score = r.get("score") or {}
-        stage_summary = score.get("stage_summary") or {}
-        sleep = WhoopSleep(
-            id=r["id"],
+        stage = score.get("stage_summary") or {}
+        sleep_needed = score.get("sleep_needed") or {}
+        db.add(WhoopSleep(
+            id=r["id"],                             # UUID string
             cycle_id=r.get("cycle_id"),
             user_id=r["user_id"],
+            nap=r.get("nap"),
             start=_parse_dt(r.get("start")),
             end=_parse_dt(r.get("end")),
-            total_in_bed_milli=stage_summary.get("total_in_bed_time_milli"),
-            light_sleep_milli=stage_summary.get("total_light_sleep_time_milli"),
-            slow_wave_milli=stage_summary.get("total_slow_wave_sleep_time_milli"),
-            rem_sleep_milli=stage_summary.get("total_rem_sleep_time_milli"),
-            awake_count=stage_summary.get("disturbance_count"),
-            sleep_cycle_count=stage_summary.get("sleep_cycle_count"),
+            total_in_bed_milli=stage.get("total_in_bed_time_milli"),
+            light_sleep_milli=stage.get("total_light_sleep_time_milli"),
+            slow_wave_milli=stage.get("total_slow_wave_sleep_time_milli"),
+            rem_sleep_milli=stage.get("total_rem_sleep_time_milli"),
+            awake_count=stage.get("disturbance_count"),
+            sleep_cycle_count=stage.get("sleep_cycle_count"),
             sleep_performance_pct=score.get("sleep_performance_percentage"),
             sleep_consistency_pct=score.get("sleep_consistency_percentage"),
             sleep_efficiency_pct=score.get("sleep_efficiency_percentage"),
             respiratory_rate=score.get("respiratory_rate"),
-            sleep_debt_milli=score.get("sleep_debt_milli") if score.get("sleep_debt_milli") else None,
+            sleep_debt_milli=sleep_needed.get("need_from_sleep_debt_milli"),
             score_state=r.get("score_state"),
-        )
-        db.add(sleep)
+        ))
         saved += 1
     return saved
 
@@ -112,17 +108,15 @@ def _sync_sleep(db, records: list[dict]) -> int:
 def _sync_workouts(db, records: list[dict]) -> int:
     saved = 0
     for r in records:
-        existing = db.get(WhoopWorkout, r["id"])
-        if existing:
+        if db.get(WhoopWorkout, r["id"]):
             continue
         score = r.get("score") or {}
         zones = score.get("zone_duration") or {}
-        sport_name = r.get("sport_name") or str(r.get("sport_id", "Unknown"))
-        workout = WhoopWorkout(
-            id=r["id"],
+        db.add(WhoopWorkout(
+            id=r["id"],                             # UUID string
             cycle_id=r.get("cycle_id"),
             user_id=r["user_id"],
-            sport_name=sport_name,
+            sport_name=r.get("sport_name", "Unknown"),
             start=_parse_dt(r.get("start")),
             end=_parse_dt(r.get("end")),
             strain_score=score.get("strain"),
@@ -137,8 +131,7 @@ def _sync_workouts(db, records: list[dict]) -> int:
             zone_four_milli=zones.get("zone_four_milli"),
             zone_five_milli=zones.get("zone_five_milli"),
             score_state=r.get("score_state"),
-        )
-        db.add(workout)
+        ))
         saved += 1
     return saved
 
@@ -146,7 +139,6 @@ def _sync_workouts(db, records: list[dict]) -> int:
 async def sync_all(days: int = 90):
     """Pull all data types for the last `days` days."""
     start = datetime.now(timezone.utc) - timedelta(days=days)
-
     logger.info(f"Syncing Whoop data for last {days} days...")
 
     async with WhoopClient() as client:
@@ -170,9 +162,7 @@ async def sync_all(days: int = 90):
 if __name__ == "__main__":
     import sys
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--days", type=int, default=90)
     args = parser.parse_args()
-
     asyncio.run(sync_all(days=args.days))
