@@ -3,7 +3,6 @@ APScheduler job definitions.
 All times are in the configured TIMEZONE.
 """
 
-import asyncio
 import logging
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -84,24 +83,27 @@ def create_scheduler(slack_client) -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler(timezone=tz)
 
     scheduler.add_job(
-        lambda: asyncio.ensure_future(_morning_job(slack_client)),
+        _morning_job,
         CronTrigger(hour=MORNING_HOUR, minute=0, timezone=tz),
+        args=[slack_client],
         id="morning",
         name="Morning health summary",
         replace_existing=True,
     )
 
     scheduler.add_job(
-        lambda: asyncio.ensure_future(_midday_sync_job(slack_client)),
+        _midday_sync_job,
         CronTrigger(hour=13, minute=0, timezone=tz),
+        args=[slack_client],
         id="midday_sync",
         name="Midday sync + flag check",
         replace_existing=True,
     )
 
     scheduler.add_job(
-        lambda: asyncio.ensure_future(_evening_journal_job(slack_client)),
+        _evening_journal_job,
         CronTrigger(hour=EVENING_JOURNAL_HOUR, minute=0, timezone=tz),
+        args=[slack_client],
         id="evening_journal",
         name="Evening journal prompt",
         replace_existing=True,
@@ -109,8 +111,9 @@ def create_scheduler(slack_client) -> AsyncIOScheduler:
 
     # Sunday 9am weekly report
     scheduler.add_job(
-        lambda: asyncio.ensure_future(_weekly_job(slack_client)),
+        _weekly_job,
         CronTrigger(day_of_week="sun", hour=9, minute=0, timezone=tz),
+        args=[slack_client],
         id="weekly_report",
         name="Weekly health report",
         replace_existing=True,
