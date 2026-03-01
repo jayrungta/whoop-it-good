@@ -73,6 +73,39 @@ def register_handlers(app):
         await say(text=answer, thread_ts=event.get("ts"))
 
 
+    @app.command("/sync")
+    async def handle_sync_command(ack, respond, command, client):
+        """Handle /sync [days] — on-demand WHOOP data refresh."""
+        text = command.get("text", "").strip()
+        try:
+            days = int(text) if text else 3
+        except ValueError:
+            days = 3
+        days = max(1, min(days, 365))
+
+        await ack(text=f"⏳ Syncing last {days} day{'s' if days != 1 else ''}...")
+
+        from scheduler.jobs import _ensure_token_fresh
+        from whoop.sync import sync_all
+
+        await _ensure_token_fresh(client)
+
+        channel = command["channel_id"]
+        try:
+            counts = await sync_all(days=days)
+            msg = (
+                f"✅ *Manual sync done* — "
+                f"cycles: +{counts['cycles']}, recovery: +{counts['recovery']}, "
+                f"sleep: +{counts['sleep']}, workouts: +{counts['workouts']} "
+                f"(last {days}d)"
+            )
+        except Exception as e:
+            logger.error(f"Manual /sync failed: {e}")
+            msg = f"❌ Sync failed: {e}"
+
+        await client.chat_postMessage(channel=channel, text=msg)
+
+
 def register_journal_thread(thread_ts: str, metadata: dict):
     """Called by journal flow to register a pending thread."""
     _pending_journal_threads[thread_ts] = metadata
