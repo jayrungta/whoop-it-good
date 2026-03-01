@@ -115,3 +115,17 @@ class AIInsight(Base):
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
 
+class OAuthToken(Base):
+    __tablename__ = "oauth_tokens"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    provider = Column(String(50), nullable=False, unique=True)   # "whoop"
+    access_token = Column(Text, nullable=False)
+    refresh_token = Column(Text, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    scope = Column(Text, nullable=True)
+    token_type = Column(String(50), nullable=True)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+

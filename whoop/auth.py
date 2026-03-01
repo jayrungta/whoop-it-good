@@ -67,7 +67,7 @@ async def refresh_tokens(refresh_token: str) -> dict:
                 "client_secret": WHOOP_CLIENT_SECRET,
                 "refresh_token": refresh_token,
                 "grant_type": "refresh_token",
-                "scope": "offline",
+                "scope": WHOOP_SCOPES,
             },
         )
         resp.raise_for_status()
