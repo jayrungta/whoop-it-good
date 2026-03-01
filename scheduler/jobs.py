@@ -4,6 +4,7 @@ All times are in the configured TIMEZONE.
 """
 
 import logging
+import os
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -14,11 +15,32 @@ from config.settings import MORNING_HOUR, EVENING_JOURNAL_HOUR, TIMEZONE
 logger = logging.getLogger(__name__)
 
 
+async def _ensure_token_fresh(slack_client):
+    """Refresh tokens if > 20 days old. Called at top of each data-fetching job."""
+    from whoop.token_store import days_since_last_refresh
+    from whoop.auth import refresh_tokens, save_tokens
+    from slack_bot.alerts import notify_error
+
+    age = days_since_last_refresh()
+    if age is None or age < 20:
+        return  # fresh enough
+
+    logger.info(f"Token is {age} days old — proactively refreshing")
+    try:
+        tokens = await refresh_tokens(os.getenv("WHOOP_REFRESH_TOKEN"))
+        save_tokens(tokens)
+        logger.info("Proactive token refresh succeeded")
+    except Exception as e:
+        logger.error(f"Proactive token refresh failed: {e}")
+        await notify_error("Proactive token refresh", e)
+
+
 async def _morning_job(slack_client):
     from slack_bot.morning import post_morning_message
     from slack_bot.alerts import notify_sync_success, notify_error
     from whoop.sync import sync_all
 
+    await _ensure_token_fresh(slack_client)
     logger.info("Running morning job: sync + morning message")
     try:
         counts = await sync_all(days=3)
@@ -39,6 +61,7 @@ async def _midday_sync_job(slack_client):
     from slack_bot.alerts import notify_sync_success, notify_error
     from config.settings import SLACK_USER_ID
 
+    await _ensure_token_fresh(slack_client)
     logger.info("Running midday sync")
     try:
         counts = await sync_all(days=1)
@@ -67,6 +90,7 @@ async def _weekly_job(slack_client):
     from slack_bot.weekly import post_weekly_report
     from slack_bot.alerts import notify_sync_success, notify_error
 
+    await _ensure_token_fresh(slack_client)
     logger.info("Running weekly report job")
     try:
         counts = await sync_all(days=7)

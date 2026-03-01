@@ -3,6 +3,7 @@ Async Whoop API client with automatic token refresh.
 """
 
 import asyncio
+import logging
 import os
 from datetime import datetime, timezone
 from typing import Any
@@ -42,14 +43,35 @@ class WhoopClient:
             if self._refreshed:
                 # Another parallel request already refreshed — just retry with new token
                 return True
-            tokens = await refresh_tokens(self._refresh_token)
+            try:
+                tokens = await refresh_tokens(self._refresh_token)
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 400:
+                    await self._notify_reauth_required()
+                    raise RuntimeError("WHOOP refresh token expired — re-auth required") from e
+                raise
             self._access_token = tokens["access_token"]
             self._refresh_token = tokens["refresh_token"]
-            os.environ["WHOOP_ACCESS_TOKEN"] = self._access_token
-            os.environ["WHOOP_REFRESH_TOKEN"] = self._refresh_token
             save_tokens(tokens)
             self._refreshed = True
             return True
+
+    async def _notify_reauth_required(self):
+        try:
+            from slack_bot.alerts import _slack_client
+            from config.settings import SLACK_USER_ID
+            if _slack_client:
+                await _slack_client.chat_postMessage(
+                    channel=SLACK_USER_ID,
+                    text=(
+                        "🔑 *WHOOP refresh token expired.* All jobs are paused.\n\n"
+                        "To fix:\n"
+                        "1. Run locally: `python -m whoop.auth`\n"
+                        "2. Then: `fly secrets set WHOOP_ACCESS_TOKEN=... WHOOP_REFRESH_TOKEN=...`"
+                    )
+                )
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Failed to send re-auth DM: {e}")
 
     async def _get(self, path: str, params: dict | None = None) -> dict:
         resp = await self._client.get(path, headers=self._auth_headers(), params=params)

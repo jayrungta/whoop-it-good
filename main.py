@@ -33,6 +33,9 @@ async def main():
     init_db()
     logger.info("Database ready")
 
+    from whoop.token_store import load_tokens_from_db
+    load_tokens_from_db()
+
     # Slack web client (async)
     slack_client = app.client
 
