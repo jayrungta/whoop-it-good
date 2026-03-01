@@ -47,5 +47,8 @@ def days_since_last_refresh() -> int | None:
         row = db.query(OAuthToken).filter_by(provider=PROVIDER).first()
         if row is None or row.updated_at is None:
             return None
-        delta = datetime.now(timezone.utc) - row.updated_at.replace(tzinfo=timezone.utc)
+        updated_at = row.updated_at
+        if updated_at.tzinfo is None:
+            updated_at = updated_at.replace(tzinfo=timezone.utc)
+        delta = datetime.now(timezone.utc) - updated_at
         return delta.days
